@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>野球 成長管理</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e1a;--bg2:#111827;--bg3:#1f2937;--border:#374151;
+  --text:#f9fafb;--text2:#9ca3af;--accent:#3b82f6;
+  --hinge:#3b82f6;--mobility:#22c55e;--core:#a855f7;
+  --power:#f97316;--explosive:#ef4444;--practice:#06b6d4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:16px}
+#loading p{color:var(--text2);font-size:14px}
+.spinner{width:44px;height:44px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#app{display:none;flex-direction:column;min-height:100vh}
+#app.visible{display:flex}
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.app-title{font-size:16px;font-weight:700;color:var(--accent);white-space:nowrap}
+.player-select-wrap{flex:1;display:flex;justify-content:flex-end}
+select{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:8px;font-size:13px;max-width:160px;width:100%}
+select option{background:#1f2937}
+main{flex:1;overflow-y:auto;padding-bottom:76px}
+.tab-content{display:none;padding:14px}
+.tab-content.active{display:block}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg2);border-top:1px solid var(--border);display:flex;z-index:100}
+.nav-btn{flex:1;background:none;border:none;color:var(--text2);padding:8px 4px 10px;font-size:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s}
+.nav-btn.active{color:var(--accent)}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.card-title{font-size:11px;color:var(--text2);margin-bottom:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.stat-card{background:var(--bg3);border-radius:10px;padding:12px;text-align:center}
+.stat-value{font-size:22px;font-weight:700}
+.stat-unit{font-size:11px;color:var(--text2)}
+.stat-label{font-size:11px;color:var(--text2);margin-top:3px}
+.form-group{margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+input[type=text],input[type=number],input[type=date],textarea{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:15px}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:64px;font-size:14px}
+.btn{padding:11px 18px;border-radius:10px;border:none;font-size:15px;font-weight:600;cursor:pointer;width:100%;transition:opacity .2s,transform .1s;line-height:1.2}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:6px 12px;font-size:12px;width:auto;border-radius:8px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cat-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.cat-tabs::-webkit-scrollbar{display:none}
+.cat-tab{padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;white-space:nowrap;transition:all .2s;flex-shrink:0}
+.cat-tab.active{color:#fff;border-color:transparent}
+.training-grid{display:flex;flex-direction:column;gap:6px}
+.training-btn{background:var(--bg3);border:1.5px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;text-align:left;cursor:pointer;font-size:13px;transition:all .15s;display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%}
+.training-btn.selected{background:rgba(255,255,255,.04)}
+.training-btn-inner{flex:1}
+.t-name{font-size:13px;font-weight:500}
+.t-default{font-size:11px;color:var(--text2);margin-top:1px}
+.check-circle{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.training-btn.selected .check-circle{background:currentColor;border-color:currentColor}
+.check-circle svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .15s}
+.training-btn.selected .check-circle svg{opacity:1}
+.selected-trainings{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.sel-item{background:var(--bg3);border-radius:10px;padding:10px;border-left:3px solid var(--accent)}
+.sel-item-name{font-size:13px;font-weight:600;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.sel-item-remove{background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.sel-item-inputs{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sel-item-inputs label{font-size:11px;margin-bottom:3px}
+.sel-item-inputs input{padding:6px 10px;font-size:14px}
+.history-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:7px}
+.history-date{font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600}
+.training-tags{display:flex;flex-wrap:wrap;gap:4px}
+.training-tag{font-size:11px;padding:2px 8px;border-radius:4px;color:#fff;font-weight:500}
+.history-comment{font-size:12px;color:var(--text2);margin-top:6px}
+.growth-record{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:7px}
+.growth-record-date{font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:600}
+.growth-record-vals{display:flex;flex-wrap:wrap;gap:10px}
+.growth-val{font-size:13px}
+.growth-val span{color:var(--text2);font-size:11px}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.section-title{font-size:17px;font-weight:700}
+.player-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center}
+.player-name{font-size:15px;font-weight:600}
+.player-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.player-actions{display:flex;gap:7px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:390px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:14px}
+.modal-actions{display:flex;gap:8px;margin-top:14px}
+.modal-actions .btn{flex:1}
+.toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:#1f2937;border:1px solid var(--border);color:var(--text);padding:9px 20px;border-radius:20px;font-size:13px;z-index:900;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.empty-state{text-align:center;padding:36px 20px;color:var(--text2);font-size:14px}
+.no-player{text-align:center;padding:60px 20px;color:var(--text2)}
+.no-player-icon{font-size:48px;margin-bottom:12px}
+.no-player p{font-size:14px}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.chart-wrap{position:relative;height:190px}
+.master-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.master-item-info .master-name{font-size:13px;font-weight:600}
+.master-item-info .master-cat{font-size:11px;color:var(--text2);margin-top:2px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .25s ease}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>読み込み中...</p>
+</div>
+
+<div id="app">
+  <header>
+    <span class="app-title">⚾ 野球成長管理</span>
+    <div class="player-select-wrap">
+      <select id="playerSelect" onchange="onPlayerChange(this.value)">
+        <option value="">選手を選択</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <!-- HOME TAB -->
+    <div id="tab-home" class="tab-content active">
+      <div id="homeContent"></div>
+    </div>
+
+    <!-- GROWTH TAB -->
+    <div id="tab-growth" class="tab-content">
+      <div class="section-header">
+        <span class="section-title">成長記録</span>
+        <button class="btn btn-primary btn-sm" onclick="showGrowthForm()">＋ 追加</button>
+      </div>
+      <div id="growthFormWrap" style="display:none">
+        <div class="card fade-in">
+          <div class="card-title">新規記録</div>
+          <div class="form-group">
+            <label>日付</label>
+            <input type="date" id="gDate">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>身長 (cm)</label>
+              <input type="number" id="gHeight" step="0.1" placeholder="例: 145.5">
+            </div>
+            <div class="form-group">
+              <label>体重 (kg)</label>
+              <input type="number" id="gWeight" step="0.1" placeholder="例: 38.0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>球速 (km/h)</label>
+              <input type="number" id="gBallSpeed" placeholder="例: 85">
+            </div>
+            <div class="form-group">
+              <label>スイング速度 (km/h)</label>
+              <input type="number" id="gSwingSpeed" placeholder="例: 100">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" onclick="hideGrowthForm()">キャンセル</button>
+            <button class="btn btn-primary" onclick="saveGrowthRecord()">保存</button>
+          </div>
+        </div>
+      </div>
+      <div id="growthList"></div>
+    </div>
+
+    <!-- TRAINING TAB -->
+    <div id="tab-training" class="tab-content">
+      <div class="section-header">
+        <span class="section-title">トレーニング記録</span>
+      </div>
+      <div class="card">
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="tDate">
+        </div>
+        <div class="card-title" style="margin-bottom:8px">メニュー選択</div>
+        <div class="cat-tabs" id="catTabs"></div>
+        <div class="training-grid" id="trainingGrid"></div>
+        <div id="selectedTrainings" class="selected-trainings"></div>
+        <div class="divider"></div>
+        <div class="form-group">
+          <label>コメント</label>
+          <textarea id="tComment" placeholder="今日の一言メモ..."></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveTrainingRecord()">保存</button>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tab-settings" class="tab-content">
+      <div class="section-header">
+        <span class="section-title">選手管理</span>
+        <button class="btn btn-primary btn-sm" onclick="showPlayerModal()">＋ 追加</button>
+      </div>
+      <div id="playerList"></div>
+      <div class="divider"></div>
+      <div class="section-header">
+        <span class="section-title">トレーニング項目</span>
+        <button class="btn btn-primary btn-sm" onclick="showMasterModal()">＋ 追加</button>
+      </div>
+      <div id="masterList"></div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="home" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      ホーム
+    </button>
+    <button class="nav-btn" data-tab="growth" onclick="switchTab('growth')">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      成長記録
+    </button>
+    <button class="nav-btn" data-tab="training" onclick="switchTab('training')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      トレーニング
+    </button>
+    <button class="nav-btn" data-tab="settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+      設定
+    </button>
+  </nav>
+</div>
+
+<!-- Player Modal -->
+<div id="playerModal" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="playerModalTitle">選手を追加</div>
+    <div class="form-group">
+      <label>名前</label>
+      <input type="text" id="pName" placeholder="山田 太郎">
+    </div>
+    <div class="form-group">
+      <label>生年月日</label>
+      <input type="date" id="pBirthdate">
+    </div>
+    <div class="form-group">
+      <label>学年</label>
+      <select id="pGrade" style="width:100%;padding:9px 12px;font-size:15px">
+        <option value="小学1年">小学1年</option>
+        <option value="小学2年">小学2年</option>
+        <option value="小学3年">小学3年</option>
+        <option value="小学4年">小学4年</option>
+        <option value="小学5年">小学5年</option>
+        <option value="小学6年">小学6年</option>
+        <option value="中学1年">中学1年</option>
+        <option value="中学2年">中学2年</option>
+        <option value="中学3年">中学3年</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closePlayerModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePlayer()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Training Master Modal -->
+<div id="masterModal" class="modal-overlay" style="display:none">
+  <div class="modal">
+    <div class="modal-title">カスタム項目を追加</div>
+    <div class="form-group">
+      <label>項目名</label>
+      <input type="text" id="mName" placeholder="例: バンドトレーニング">
+    </div>
+    <div class="form-group">
+      <label>カテゴリ</label>
+      <select id="mCategory" style="width:100%;padding:9px 12px;font-size:15px">
+        <option value="hinge">基礎・ヒンジ</option>
+        <option value="mobility">可動域・柔軟</option>
+        <option value="core">体幹・腹圧</option>
+        <option value="power">出力・筋力</option>
+        <option value="explosive">瞬発力</option>
+        <option value="practice">実戦練習</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>デフォルト回数</label>
+        <input type="number" id="mCount" placeholder="10">
+      </div>
+      <div class="form-group">
+        <label>デフォルトセット数</label>
+        <input type="number" id="mSets" placeholder="3">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>単位</label>
+      <input type="text" id="mUnit" placeholder="回・秒・球など">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeMasterModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveMasterItem()">追加</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {
+  getFirestore, collection, doc, addDoc, setDoc, deleteDoc,
+  getDocs, query, where, orderBy, onSnapshot, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ===================== FIREBASE CONFIG (プレースホルダー) =====================
+const firebaseConfig = {
+  apiKey: "AIzaSyA1U_6T68uT3p3wCSRipIYw4pGkLVU6cIc",
+  authDomain: "baseball-training-7874e.firebaseapp.com",
+  projectId: "baseball-training-7874e",
+  storageBucket: "baseball-training-7874e.firebasestorage.app",
+  messagingSenderId: "132293120109",
+  appId: "1:132293120109:web:56381d4e17ef33da746f64"
+};
+// ==========================================================================
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ===================== TRAINING MASTER =====================
+const CATEGORY_META = {
+  hinge:     { name: '基礎・ヒンジ',   color: '#3b82f6' },
+  mobility:  { name: '可動域・柔軟',   color: '#22c55e' },
+  core:      { name: '体幹・腹圧',     color: '#a855f7' },
+  power:     { name: '出力・筋力',     color: '#f97316' },
+  explosive: { name: '瞬発力',         color: '#ef4444' },
+  practice:  { name: '実戦練習',       color: '#06b6d4' },
+};
+
+const DEFAULT_MASTER = [
+  // 基礎・ヒンジ
+  { id:'h1', cat:'hinge', name:'壁ヒンジ',       defCount:10, defSets:3, unit:'回',  note:'' },
+  { id:'h2', cat:'hinge', name:'片足ヒンジ',     defCount:5,  defSets:3, unit:'回',  note:'左右' },
+  { id:'h3', cat:'hinge', name:'壁押しドリル',   defCount:10, defSets:3, unit:'秒',  note:'左右' },
+  // 可動域・柔軟
+  { id:'m1', cat:'mobility', name:'ハムストリングスストレッチ',         defCount:30, defSets:2, unit:'秒', note:'左右' },
+  { id:'m2', cat:'mobility', name:'股関節ストレッチランジ',             defCount:30, defSets:2, unit:'秒', note:'左右' },
+  { id:'m3', cat:'mobility', name:'胸郭ストレッチ キャット&ドッグ',    defCount:20, defSets:2, unit:'回', note:'' },
+  { id:'m4', cat:'mobility', name:'捻転ストレッチ トランクローテーション', defCount:20, defSets:2, unit:'回', note:'' },
+  { id:'m5', cat:'mobility', name:'ブリッジ',                         defCount:20, defSets:2, unit:'秒', note:'' },
+  // 体幹・腹圧
+  { id:'c1', cat:'core', name:'プランク',                    defCount:30, defSets:3, unit:'秒', note:'' },
+  { id:'c2', cat:'core', name:'バランスディスク腿上げ',      defCount:30, defSets:2, unit:'秒', note:'左右' },
+  { id:'c3', cat:'core', name:'オーバーヘッド腿上げ',        defCount:10, defSets:2, unit:'秒', note:'左右' },
+  // 出力・筋力
+  { id:'p1', cat:'power', name:'ヒップリフト',             defCount:20, defSets:2, unit:'秒', note:'' },
+  { id:'p2', cat:'power', name:'片足ヒップリフト',         defCount:10, defSets:2, unit:'秒', note:'左右' },
+  { id:'p3', cat:'power', name:'バランスボールハムカール', defCount:10, defSets:2, unit:'回', note:'' },
+  // 瞬発力
+  { id:'e1', cat:'explosive', name:'ジャンプボックス50cm ヒンジジャンプ', defCount:10, defSets:3, unit:'回', note:'' },
+  { id:'e2', cat:'explosive', name:'ジャンプボックス40cm 左右ジャンプ',  defCount:10, defSets:2, unit:'往復', note:'' },
+  { id:'e3', cat:'explosive', name:'ジャンプボックス30cm 連続ジャンプ',  defCount:10, defSets:2, unit:'回', note:'' },
+  { id:'e4', cat:'explosive', name:'縄跳び 一重跳び',                    defCount:100,defSets:1, unit:'回', note:'' },
+  { id:'e5', cat:'explosive', name:'縄跳び 二重跳び',                    defCount:10, defSets:3, unit:'回', note:'' },
+  // 実戦練習 (freeInput)
+  { id:'pr1', cat:'practice', name:'キャッチボール',        defCount:0, defSets:1, unit:'球', note:'', freeInput:true },
+  { id:'pr2', cat:'practice', name:'ピッチング練習',        defCount:0, defSets:1, unit:'球', note:'', freeInput:true },
+  { id:'pr3', cat:'practice', name:'素振り',               defCount:0, defSets:1, unit:'回', note:'', freeInput:true },
+  { id:'pr4', cat:'practice', name:'連続素振り',           defCount:0, defSets:1, unit:'回', note:'', freeInput:true },
+  { id:'pr5', cat:'practice', name:'テニスボール打ち',     defCount:0, defSets:1, unit:'球', note:'', freeInput:true },
+  { id:'pr6', cat:'practice', name:'ソフトボールティー打ち',defCount:0, defSets:1, unit:'球', note:'', freeInput:true },
+  { id:'pr7', cat:'practice', name:'バッティングセンター', defCount:0, defSets:1, unit:'球', note:'', freeInput:true },
+];
+
+// ===================== STATE =====================
+let state = {
+  players: [],
+  currentPlayerId: null,
+  growthRecords: [],
+  trainingRecords: [],
+  customMaster: [],
+  selectedTrainings: {},   // id -> { name, count, sets, unit, color }
+  currentCat: 'all',
+  growthChart: null,
+  editingPlayerId: null,
+  unsubGrowth: null,
+  unsubTraining: null,
+};
+
+function getAllMaster() {
+  return [...DEFAULT_MASTER, ...state.customMaster];
+}
+
+// ===================== INIT =====================
+async function init() {
+  // today default for forms
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('gDate').value = today;
+  document.getElementById('tDate').value = today;
+
+  // load players
+  await loadPlayers();
+
+  // load custom master
+  await loadCustomMaster();
+
+  // build category tabs + training grid
+  buildCatTabs();
+  renderTrainingGrid();
+
+  // hide loading
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+
+  renderHome();
+  renderGrowthList();
+  renderSettingsMaster();
+}
+
+// ===================== PLAYERS =====================
+async function loadPlayers() {
+  const snap = await getDocs(query(collection(db,'players'), orderBy('createdAt','asc')));
+  state.players = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderPlayerSelect();
+  renderPlayerList();
+  if (state.players.length > 0 && !state.currentPlayerId) {
+    setCurrentPlayer(state.players[0].id);
+  }
+}
+
+function renderPlayerSelect() {
+  const sel = document.getElementById('playerSelect');
+  const val = sel.value || state.currentPlayerId || '';
+  sel.innerHTML = '<option value="">選手を選択</option>';
+  state.players.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    if (p.id === val) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function setCurrentPlayer(id) {
+  state.currentPlayerId = id;
+  document.getElementById('playerSelect').value = id;
+  subscribePlayerData();
+}
+
+window.onPlayerChange = function(id) {
+  if (!id) return;
+  setCurrentPlayer(id);
+};
+
+function subscribePlayerData() {
+  const pid = state.currentPlayerId;
+  if (!pid) return;
+
+  if (state.unsubGrowth) state.unsubGrowth();
+  if (state.unsubTraining) state.unsubTraining();
+
+  state.unsubGrowth = onSnapshot(
+    query(collection(db,'growthRecords'), where('playerId','==',pid), orderBy('date','desc')),
+    snap => {
+      state.growthRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderHome();
+      renderGrowthList();
+    }
+  );
+
+  state.unsubTraining = onSnapshot(
+    query(collection(db,'trainingRecords'), where('playerId','==',pid), orderBy('date','desc')),
+    snap => {
+      state.trainingRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderHome();
+    }
+  );
+}
+
+// ===================== HOME =====================
+function renderHome() {
+  const el = document.getElementById('homeContent');
+  if (!state.currentPlayerId) {
+    el.innerHTML = `<div class="no-player"><div class="no-player-icon">⚾</div><p>選手を選択または<br>設定タブから追加してください</p></div>`;
+    return;
+  }
+  const player = state.players.find(p => p.id === state.currentPlayerId);
+  if (!player) return;
+
+  const latest = state.growthRecords[0] || null;
+  const recentTraining = state.trainingRecords.slice(0,5);
+
+  // build stats
+  const statsHTML = `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">${latest?.height ?? '--'}<span class="stat-unit"> cm</span></div>
+        <div class="stat-label">身長</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${latest?.weight ?? '--'}<span class="stat-unit"> kg</span></div>
+        <div class="stat-label">体重</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:#ef4444">${latest?.ballSpeed ?? '--'}<span class="stat-unit"> km/h</span></div>
+        <div class="stat-label">⚾ 球速</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color:#f97316">${latest?.swingSpeed ?? '--'}<span class="stat-unit"> km/h</span></div>
+        <div class="stat-label">🏏 スイング速度</div>
+      </div>
+    </div>
+  `;
+
+  // chart data (ball speed)
+  const chartRecords = [...state.growthRecords].reverse().slice(-12);
+  const chartLabels = chartRecords.map(r => r.date.slice(5));
+  const chartData = chartRecords.map(r => r.ballSpeed || null);
+
+  const trainingHTML = recentTraining.length === 0
+    ? '<div class="empty-state">まだ記録がありません</div>'
+    : recentTraining.map(t => buildTrainingHistoryItem(t)).join('');
+
+  const age = player.birthdate ? calcAge(player.birthdate) : '';
+
+  el.innerHTML = `
+    <div class="card fade-in">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-size:20px;font-weight:700">${escHtml(player.name)}</div>
+          <div style="font-size:12px;color:var(--text2)">${escHtml(player.grade)} ${age ? '/ ' + age + '歳' : ''}</div>
+        </div>
+        ${latest ? `<div style="font-size:11px;color:var(--text2)">最終更新: ${latest.date}</div>` : ''}
+      </div>
+      ${statsHTML}
+    </div>
+    <div class="card fade-in">
+      <div class="card-title">球速推移 (km/h)</div>
+      ${chartData.some(v=>v!==null)
+        ? `<div class="chart-wrap"><canvas id="speedChart"></canvas></div>`
+        : '<div class="empty-state">成長記録を追加すると推移グラフが表示されます</div>'
+      }
+    </div>
+    <div class="card fade-in">
+      <div class="card-title">直近のトレーニング</div>
+      ${trainingHTML}
+    </div>
+  `;
+
+  // render chart
+  if (chartData.some(v=>v!==null)) {
+    const ctx = document.getElementById('speedChart');
+    if (ctx) {
+      if (state.growthChart) state.growthChart.destroy();
+      state.growthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartLabels,
+          datasets: [{
+            label: '球速 km/h',
+            data: chartData,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,.15)',
+            pointBackgroundColor: '#ef4444',
+            tension: 0.35,
+            fill: true,
+            spanGaps: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color:'#9ca3af', font:{size:10} }, grid:{color:'#1f2937'} },
+            y: { ticks: { color:'#9ca3af', font:{size:10} }, grid:{color:'#1f2937'} }
+          }
+        }
+      });
+    }
+  }
+}
+
+function buildTrainingHistoryItem(t) {
+  const tags = (t.items || []).slice(0,4).map(it => {
+    const master = getAllMaster().find(m => m.id === it.id);
+    const color = master ? CATEGORY_META[master.cat]?.color || '#6b7280' : '#6b7280';
+    const label = `${it.name} ${it.count}${it.unit||''}×${it.sets}set`;
+    return `<span class="training-tag" style="background:${color}22;color:${color}">${escHtml(label)}</span>`;
+  }).join('');
+  const more = (t.items||[]).length > 4 ? `<span class="training-tag">+${(t.items.length-4)}件</span>` : '';
+  const comment = t.comment ? `<div class="history-comment">💬 ${escHtml(t.comment)}</div>` : '';
+  return `<div class="history-item"><div class="history-date">${t.date}</div><div class="training-tags">${tags}${more}</div>${comment}</div>`;
+}
+
+function calcAge(birthdate) {
+  if (!birthdate) return '';
+  const b = new Date(birthdate);
+  const n = new Date();
+  let age = n.getFullYear() - b.getFullYear();
+  const m = n.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && n.getDate() < b.getDate())) age--;
+  return age;
+}
+
+// ===================== GROWTH =====================
+window.showGrowthForm = function() {
+  document.getElementById('growthFormWrap').style.display = 'block';
+};
+window.hideGrowthForm = function() {
+  document.getElementById('growthFormWrap').style.display = 'none';
+};
+
+window.saveGrowthRecord = async function() {
+  if (!state.currentPlayerId) { showToast('選手を選択してください'); return; }
+  const date  = document.getElementById('gDate').value;
+  const height= parseFloat(document.getElementById('gHeight').value) || null;
+  const weight= parseFloat(document.getElementById('gWeight').value) || null;
+  const ballSpeed  = parseFloat(document.getElementById('gBallSpeed').value) || null;
+  const swingSpeed = parseFloat(document.getElementById('gSwingSpeed').value) || null;
+  if (!date) { showToast('日付を入力してください'); return; }
+  try {
+    await addDoc(collection(db,'growthRecords'), {
+      playerId: state.currentPlayerId, date, height, weight, ballSpeed, swingSpeed,
+      createdAt: serverTimestamp()
+    });
+    showToast('成長記録を保存しました');
+    hideGrowthForm();
+    clearGrowthForm();
+  } catch(e) { showToast('保存に失敗しました'); console.error(e); }
+};
+
+function clearGrowthForm() {
+  ['gHeight','gWeight','gBallSpeed','gSwingSpeed'].forEach(id => document.getElementById(id).value='');
+}
+
+function renderGrowthList() {
+  const el = document.getElementById('growthList');
+  if (!state.currentPlayerId) { el.innerHTML=''; return; }
+  if (state.growthRecords.length === 0) {
+    el.innerHTML = '<div class="empty-state">まだ記録がありません</div>';
+    return;
+  }
+  el.innerHTML = state.growthRecords.map(r => `
+    <div class="growth-record fade-in">
+      <div>
+        <div class="growth-record-date">${r.date}</div>
+        <div class="growth-record-vals">
+          ${r.height!=null?`<span class="growth-val">${r.height}<span> cm</span></span>`:''}
+          ${r.weight!=null?`<span class="growth-val">${r.weight}<span> kg</span></span>`:''}
+          ${r.ballSpeed!=null?`<span class="growth-val" style="color:#ef4444">${r.ballSpeed}<span> km/h ⚾</span></span>`:''}
+          ${r.swingSpeed!=null?`<span class="growth-val" style="color:#f97316">${r.swingSpeed}<span> km/h 🏏</span></span>`:''}
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteGrowthRecord('${r.id}')">削除</button>
+    </div>
+  `).join('');
+}
+
+window.deleteGrowthRecord = async function(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  await deleteDoc(doc(db,'growthRecords',id));
+  showToast('削除しました');
+};
+
+// ===================== TRAINING =====================
+function buildCatTabs() {
+  const tabs = document.getElementById('catTabs');
+  const cats = [
+    { id:'all', name:'すべて' },
+    ...Object.entries(CATEGORY_META).map(([id,m])=>({ id, name: m.name }))
+  ];
+  tabs.innerHTML = cats.map(c => `
+    <button class="cat-tab${c.id==='all'?' active':''}" data-cat="${c.id}"
+      style="${c.id!=='all'?`background:${CATEGORY_META[c.id]?.color||''}22;color:${CATEGORY_META[c.id]?.color||''};border-color:${CATEGORY_META[c.id]?.color||''}44`:''}"
+      onclick="setCat('${c.id}')">
+      ${escHtml(c.name)}
+    </button>
+  `).join('');
+  // mark first active
+  const first = tabs.querySelector('.cat-tab');
+  if(first) first.style.background='var(--accent)';
+}
+
+window.setCat = function(cat) {
+  state.currentCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => {
+    const tc = t.dataset.cat;
+    t.classList.remove('active');
+    if (tc === cat) {
+      t.classList.add('active');
+      if (cat === 'all') {
+        t.style.background = 'var(--accent)';
+        t.style.color = '#fff';
+        t.style.borderColor = 'transparent';
+      } else {
+        const color = CATEGORY_META[cat]?.color || '#6b7280';
+        t.style.background = color;
+        t.style.color = '#fff';
+        t.style.borderColor = 'transparent';
+      }
+    } else {
+      if (tc === 'all') {
+        t.style.background = 'var(--bg3)';
+        t.style.color = 'var(--text2)';
+        t.style.borderColor = 'var(--border)';
+      } else {
+        const color = CATEGORY_META[tc]?.color || '#6b7280';
+        t.style.background = color + '22';
+        t.style.color = color;
+        t.style.borderColor = color + '44';
+      }
+    }
+  });
+  renderTrainingGrid();
+};
+
+function renderTrainingGrid() {
+  const grid = document.getElementById('trainingGrid');
+  const all = getAllMaster();
+  const items = state.currentCat === 'all' ? all : all.filter(m => m.cat === state.currentCat);
+  grid.innerHTML = items.map(m => {
+    const color = CATEGORY_META[m.cat]?.color || '#6b7280';
+    const sel = !!state.selectedTrainings[m.id];
+    const defLabel = m.freeInput
+      ? `${m.unit}`
+      : `${m.defCount}${m.unit}×${m.defSets}set${m.note?' ('+m.note+')':''}`;
+    return `
+      <button class="training-btn${sel?' selected':''}" style="color:${color}"
+        data-id="${m.id}" onclick="toggleTraining('${m.id}')">
+        <div class="training-btn-inner">
+          <div class="t-name">${escHtml(m.name)}</div>
+          <div class="t-default">${escHtml(defLabel)}</div>
+        </div>
+        <div class="check-circle">
+          <svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg>
+        </div>
+      </button>
+    `;
+  }).join('') || '<div class="empty-state">この条件の項目がありません</div>';
+}
+
+window.toggleTraining = function(id) {
+  if (state.selectedTrainings[id]) {
+    delete state.selectedTrainings[id];
+  } else {
+    const master = getAllMaster().find(m => m.id === id);
+    if (!master) return;
+    state.selectedTrainings[id] = {
+      id: master.id,
+      name: master.name,
+      count: master.defCount,
+      sets: master.defSets,
+      unit: master.unit,
+      cat: master.cat,
+      freeInput: !!master.freeInput,
+    };
+  }
+  renderTrainingGrid();
+  renderSelectedTrainings();
+};
+
+function renderSelectedTrainings() {
+  const el = document.getElementById('selectedTrainings');
+  const items = Object.values(state.selectedTrainings);
+  if (items.length === 0) { el.innerHTML=''; return; }
+  el.innerHTML = `<div style="font-size:12px;color:var(--text2);margin-bottom:6px;font-weight:700">選択済み (${items.length}件)</div>` +
+    items.map(it => {
+      const color = CATEGORY_META[it.cat]?.color || '#6b7280';
+      return `
+        <div class="sel-item" style="border-left-color:${color}">
+          <div class="sel-item-name">
+            <span style="color:${color}">${escHtml(it.name)}</span>
+            <button class="sel-item-remove" onclick="toggleTraining('${it.id}')">✕</button>
+          </div>
+          <div class="sel-item-inputs">
+            <div>
+              <label>${it.freeInput ? '数量' : '回数'} (${it.unit})</label>
+              <input type="number" value="${it.count||''}" placeholder="${it.freeInput?'数量':'回数'}"
+                oninput="updateSelCount('${it.id}',this.value)">
+            </div>
+            ${it.freeInput ? '' : `
+            <div>
+              <label>セット数</label>
+              <input type="number" value="${it.sets}" placeholder="セット"
+                oninput="updateSelSets('${it.id}',this.value)">
+            </div>`}
+          </div>
+        </div>
+      `;
+    }).join('');
+}
+
+window.updateSelCount = function(id, v) {
+  if (state.selectedTrainings[id]) state.selectedTrainings[id].count = Number(v);
+};
+window.updateSelSets = function(id, v) {
+  if (state.selectedTrainings[id]) state.selectedTrainings[id].sets = Number(v);
+};
+
+window.saveTrainingRecord = async function() {
+  if (!state.currentPlayerId) { showToast('選手を選択してください'); return; }
+  const date = document.getElementById('tDate').value;
+  const comment = document.getElementById('tComment').value.trim();
+  const items = Object.values(state.selectedTrainings);
+  if (!date) { showToast('日付を入力してください'); return; }
+  if (items.length === 0) { showToast('トレーニングを選択してください'); return; }
+  try {
+    await addDoc(collection(db,'trainingRecords'), {
+      playerId: state.currentPlayerId,
+      date, comment,
+      items: items.map(it => ({
+        id: it.id, name: it.name, count: it.count, sets: it.sets, unit: it.unit
+      })),
+      createdAt: serverTimestamp()
+    });
+    showToast('トレーニング記録を保存しました');
+    state.selectedTrainings = {};
+    renderTrainingGrid();
+    renderSelectedTrainings();
+    document.getElementById('tComment').value = '';
+  } catch(e) { showToast('保存に失敗しました'); console.error(e); }
+};
+
+// ===================== SETTINGS - PLAYERS =====================
+function renderPlayerList() {
+  const el = document.getElementById('playerList');
+  if (state.players.length === 0) {
+    el.innerHTML = '<div class="empty-state">選手が登録されていません</div>';
+    return;
+  }
+  el.innerHTML = state.players.map(p => `
+    <div class="player-item fade-in">
+      <div>
+        <div class="player-name">${escHtml(p.name)}</div>
+        <div class="player-meta">${escHtml(p.grade)} ${p.birthdate?'/ '+p.birthdate:''}</div>
+      </div>
+      <div class="player-actions">
+        <button class="btn btn-secondary btn-sm" onclick="editPlayer('${p.id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.showPlayerModal = function(id) {
+  state.editingPlayerId = id || null;
+  const modal = document.getElementById('playerModal');
+  const title = document.getElementById('playerModalTitle');
+  if (id) {
+    const p = state.players.find(x=>x.id===id);
+    if (!p) return;
+    title.textContent = '選手を編集';
+    document.getElementById('pName').value = p.name;
+    document.getElementById('pBirthdate').value = p.birthdate||'';
+    document.getElementById('pGrade').value = p.grade||'小学1年';
+  } else {
+    title.textContent = '選手を追加';
+    document.getElementById('pName').value='';
+    document.getElementById('pBirthdate').value='';
+    document.getElementById('pGrade').value='小学1年';
+  }
+  modal.style.display='flex';
+};
+window.closePlayerModal = function() {
+  document.getElementById('playerModal').style.display='none';
+};
+window.editPlayer = function(id) { showPlayerModal(id); };
+
+window.savePlayer = async function() {
+  const name = document.getElementById('pName').value.trim();
+  const birthdate = document.getElementById('pBirthdate').value;
+  const grade = document.getElementById('pGrade').value;
+  if (!name) { showToast('名前を入力してください'); return; }
+  try {
+    if (state.editingPlayerId) {
+      await setDoc(doc(db,'players',state.editingPlayerId), { name, birthdate, grade }, { merge:true });
+    } else {
+      await addDoc(collection(db,'players'), { name, birthdate, grade, createdAt: serverTimestamp() });
+    }
+    closePlayerModal();
+    await loadPlayers();
+    showToast(state.editingPlayerId ? '更新しました' : '選手を追加しました');
+    if (!state.editingPlayerId && state.players.length === 1) {
+      setCurrentPlayer(state.players[0].id);
+    }
+  } catch(e) { showToast('保存に失敗しました'); console.error(e); }
+};
+
+window.deletePlayer = async function(id) {
+  if (!confirm('この選手のデータを削除しますか？')) return;
+  await deleteDoc(doc(db,'players',id));
+  if (state.currentPlayerId === id) state.currentPlayerId = null;
+  await loadPlayers();
+  renderHome();
+  showToast('削除しました');
+};
+
+// ===================== SETTINGS - MASTER =====================
+async function loadCustomMaster() {
+  const snap = await getDocs(collection(db,'trainingMaster'));
+  state.customMaster = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+}
+
+function renderSettingsMaster() {
+  const el = document.getElementById('masterList');
+  const allMaster = getAllMaster();
+  el.innerHTML = allMaster.map(m => {
+    const color = CATEGORY_META[m.cat]?.color || '#6b7280';
+    const catName = CATEGORY_META[m.cat]?.name || m.cat;
+    const isCustom = !!m.isCustom;
+    return `
+      <div class="master-item">
+        <div class="master-item-info">
+          <div class="master-name">${escHtml(m.name)}</div>
+          <div class="master-cat" style="color:${color}">${escHtml(catName)} / ${m.defCount}${m.unit}×${m.defSets}set${m.note?' ('+m.note+')':''}</div>
+        </div>
+        ${isCustom ? `<button class="btn btn-danger btn-sm" onclick="deleteMasterItem('${m.id}')">削除</button>` : '<span style="font-size:11px;color:var(--text2)">標準</span>'}
+      </div>
+    `;
+  }).join('');
+}
+
+window.showMasterModal = function() {
+  document.getElementById('mName').value='';
+  document.getElementById('mCount').value='';
+  document.getElementById('mSets').value='';
+  document.getElementById('mUnit').value='';
+  document.getElementById('masterModal').style.display='flex';
+};
+window.closeMasterModal = function() {
+  document.getElementById('masterModal').style.display='none';
+};
+
+window.saveMasterItem = async function() {
+  const name = document.getElementById('mName').value.trim();
+  const cat  = document.getElementById('mCategory').value;
+  const defCount = parseInt(document.getElementById('mCount').value)||0;
+  const defSets  = parseInt(document.getElementById('mSets').value)||1;
+  const unit = document.getElementById('mUnit').value.trim()||'回';
+  if (!name) { showToast('項目名を入力してください'); return; }
+  try {
+    await addDoc(collection(db,'trainingMaster'), {
+      name, cat, defCount, defSets, unit, note:'', isCustom:true
+    });
+    await loadCustomMaster();
+    closeMasterModal();
+    buildCatTabs();
+    renderTrainingGrid();
+    renderSettingsMaster();
+    showToast('項目を追加しました');
+  } catch(e) { showToast('保存に失敗しました'); console.error(e); }
+};
+
+window.deleteMasterItem = async function(id) {
+  if (!confirm('この項目を削除しますか？')) return;
+  await deleteDoc(doc(db,'trainingMaster',id));
+  await loadCustomMaster();
+  buildCatTabs();
+  renderTrainingGrid();
+  renderSettingsMaster();
+  showToast('削除しました');
+};
+
+// ===================== NAVIGATION =====================
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  if (tab === 'settings') {
+    renderPlayerList();
+    renderSettingsMaster();
+  }
+};
+
+// ===================== UTILS =====================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on overlay click
+document.getElementById('playerModal').addEventListener('click', function(e) {
+  if (e.target === this) closePlayerModal();
+});
+document.getElementById('masterModal').addEventListener('click', function(e) {
+  if (e.target === this) closeMasterModal();
+});
+
+// ===================== START =====================
+init().catch(err => {
+  console.error('Initialization error:', err);
+  document.getElementById('loading').innerHTML = `
+    <div style="text-align:center;padding:20px;color:#ef4444">
+      <p style="font-size:16px;font-weight:600;margin-bottom:8px">接続エラー</p>
+      <p style="font-size:13px;color:#9ca3af">Firebaseの設定を確認してください</p>
+      <p style="font-size:11px;color:#6b7280;margin-top:12px">${err.message}</p>
+    </div>
+  `;
+});
+</script>
+</body>
+</html>
