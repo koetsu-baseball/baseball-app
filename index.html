@@ -106,6 +106,15 @@ textarea{resize:vertical;min-height:64px;font-size:14px}
 .master-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
 .master-item-info .master-name{font-size:13px;font-weight:600}
 .master-item-info .master-cat{font-size:11px;color:var(--text2);margin-top:2px}
+.weekly-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.weekly-card{background:var(--bg3);border-radius:10px;padding:12px;text-align:center}
+.weekly-value{font-size:22px;font-weight:700}
+.weekly-label{font-size:11px;color:var(--text2);margin-top:3px}
+.stats-table{width:100%;border-collapse:collapse;font-size:12px}
+.stats-table th{color:var(--text2);font-weight:600;padding:5px 8px;text-align:left;border-bottom:1px solid var(--border)}
+.stats-table td{padding:7px 8px;border-bottom:1px solid var(--border)22}
+.stats-table tr:last-child td{border-bottom:none}
+.stats-table .num{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .fade-in{animation:fadeIn .25s ease}
 ::-webkit-scrollbar{width:3px}
@@ -214,6 +223,11 @@ textarea{resize:vertical;min-height:64px;font-size:14px}
         <button class="btn btn-primary btn-sm" onclick="showMasterModal()">＋ 追加</button>
       </div>
       <div id="masterList"></div>
+      <div class="divider"></div>
+      <div class="section-header">
+        <span class="section-title">トレーニング集計</span>
+      </div>
+      <div id="trainingStats"></div>
     </div>
   </main>
 
@@ -482,6 +496,7 @@ function subscribePlayerData() {
       state.trainingRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }))
         .sort((a,b) => b.date.localeCompare(a.date));
       renderHome();
+      renderTrainingStats();
     },
     err => console.error('trainingRecords error:', err)
   );
@@ -522,6 +537,32 @@ function renderHome() {
     </div>
   `;
 
+  // weekly stats
+  const weekStart = getWeekStart();
+  const weekRecords = state.trainingRecords.filter(r => r.date >= weekStart);
+  const swingIds = new Set(['pr3','pr4']);
+  const pitchIds = new Set(['pr1','pr2','pr7']);
+  let weekSwing = 0, weekPitch = 0;
+  weekRecords.forEach(r => {
+    (r.items||[]).forEach(it => {
+      const n = Number(it.count) || 0;
+      if (swingIds.has(it.id)) weekSwing += n;
+      if (pitchIds.has(it.id)) weekPitch += n;
+    });
+  });
+  const weeklyHTML = `
+    <div class="weekly-grid">
+      <div class="weekly-card">
+        <div class="weekly-value" style="color:#f97316">${weekSwing}<span style="font-size:12px;color:var(--text2)"> 回</span></div>
+        <div class="weekly-label">🏏 今週の素振り</div>
+      </div>
+      <div class="weekly-card">
+        <div class="weekly-value" style="color:#ef4444">${weekPitch}<span style="font-size:12px;color:var(--text2)"> 球</span></div>
+        <div class="weekly-label">⚾ 今週の投球数</div>
+      </div>
+    </div>
+  `;
+
   // chart data (ball speed)
   const chartRecords = [...state.growthRecords].reverse().slice(-12);
   const chartLabels = chartRecords.map(r => r.date.slice(5));
@@ -543,6 +584,7 @@ function renderHome() {
         ${latest ? `<div style="font-size:11px;color:var(--text2)">最終更新: ${latest.date}</div>` : ''}
       </div>
       ${statsHTML}
+      ${weeklyHTML}
     </div>
     <div class="card fade-in">
       <div class="card-title">球速推移 (km/h)</div>
@@ -613,6 +655,69 @@ function calcAge(birthdate) {
   return age;
 }
 
+function getWeekStart() {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day; // back to Monday
+  const mon = new Date(d);
+  mon.setDate(d.getDate() + diff);
+  return mon.toISOString().slice(0,10);
+}
+
+function renderTrainingStats() {
+  const el = document.getElementById('trainingStats');
+  if (!el) return;
+  if (!state.currentPlayerId || state.trainingRecords.length === 0) {
+    el.innerHTML = '<div class="empty-state">トレーニング記録がありません</div>';
+    return;
+  }
+  const thisMonth = new Date().toISOString().slice(0,7); // YYYY-MM
+  // tally per item id
+  const monthly = {}, total = {};
+  state.trainingRecords.forEach(r => {
+    const isThisMonth = r.date.startsWith(thisMonth);
+    (r.items||[]).forEach(it => {
+      const n = Number(it.count) || 0;
+      if (!total[it.id]) total[it.id] = { name: it.name, unit: it.unit, sum: 0 };
+      total[it.id].sum += n;
+      if (isThisMonth) {
+        if (!monthly[it.id]) monthly[it.id] = 0;
+        monthly[it.id] += n;
+      }
+    });
+  });
+  // sort by total desc, take top items
+  const rows = Object.entries(total)
+    .sort((a,b) => b[1].sum - a[1].sum)
+    .map(([id, v]) => {
+      const master = getAllMaster().find(m => m.id === id);
+      const color = master ? CATEGORY_META[master.cat]?.color || '#6b7280' : '#6b7280';
+      const mon = monthly[id] || 0;
+      return `
+        <tr>
+          <td style="color:${color};font-weight:500">${escHtml(v.name)}</td>
+          <td class="num" style="color:${color}">${mon}<span style="font-size:10px;color:var(--text2)"> ${escHtml(v.unit)}</span></td>
+          <td class="num">${v.sum}<span style="font-size:10px;color:var(--text2)"> ${escHtml(v.unit)}</span></td>
+        </tr>
+      `;
+    }).join('');
+
+  el.innerHTML = `
+    <div class="card">
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>項目</th>
+            <th class="num" style="white-space:nowrap">今月</th>
+            <th class="num">累計</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 // ===================== GROWTH =====================
 window.showGrowthForm = function() {
   document.getElementById('growthFormWrap').style.display = 'block';
@@ -677,8 +782,13 @@ window.deleteGrowthRecord = async function(id) {
 function buildCatTabs() {
   const tabs = document.getElementById('catTabs');
   const cats = [
-    { id:'all', name:'すべて' },
-    ...Object.entries(CATEGORY_META).map(([id,m])=>({ id, name: m.name }))
+    { id:'all',       name:'すべて' },
+    { id:'practice',  name: CATEGORY_META.practice.name },
+    { id:'hinge',     name: CATEGORY_META.hinge.name },
+    { id:'mobility',  name: CATEGORY_META.mobility.name },
+    { id:'core',      name: CATEGORY_META.core.name },
+    { id:'power',     name: CATEGORY_META.power.name },
+    { id:'explosive', name: CATEGORY_META.explosive.name },
   ];
   tabs.innerHTML = cats.map(c => `
     <button class="cat-tab${c.id==='all'?' active':''}" data-cat="${c.id}"
@@ -982,6 +1092,7 @@ window.switchTab = function(tab) {
   if (tab === 'settings') {
     renderPlayerList();
     renderSettingsMaster();
+    renderTrainingStats();
   }
 };
 
