@@ -466,20 +466,24 @@ function subscribePlayerData() {
   if (state.unsubTraining) state.unsubTraining();
 
   state.unsubGrowth = onSnapshot(
-    query(collection(db,'growthRecords'), where('playerId','==',pid), orderBy('date','desc')),
+    query(collection(db,'growthRecords'), where('playerId','==',pid)),
     snap => {
-      state.growthRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      state.growthRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+        .sort((a,b) => b.date.localeCompare(a.date));
       renderHome();
       renderGrowthList();
-    }
+    },
+    err => console.error('growthRecords error:', err)
   );
 
   state.unsubTraining = onSnapshot(
-    query(collection(db,'trainingRecords'), where('playerId','==',pid), orderBy('date','desc')),
+    query(collection(db,'trainingRecords'), where('playerId','==',pid)),
     snap => {
-      state.trainingRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      state.trainingRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+        .sort((a,b) => b.date.localeCompare(a.date));
       renderHome();
-    }
+    },
+    err => console.error('trainingRecords error:', err)
   );
 }
 
