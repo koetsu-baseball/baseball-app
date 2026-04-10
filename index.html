@@ -208,6 +208,10 @@ textarea{resize:vertical;min-height:64px;font-size:14px}
         </div>
         <button class="btn btn-primary" onclick="saveTrainingRecord()">保存</button>
       </div>
+      <div class="section-header" style="margin-top:18px">
+        <span class="section-title">トレーニング履歴</span>
+      </div>
+      <div id="trainingHistoryList"></div>
     </div>
 
     <!-- SETTINGS TAB -->
@@ -496,6 +500,7 @@ function subscribePlayerData() {
       state.trainingRecords = snap.docs.map(d => ({ id:d.id, ...d.data() }))
         .sort((a,b) => b.date.localeCompare(a.date));
       renderHome();
+      renderTrainingHistory();
       renderTrainingStats();
     },
     err => console.error('trainingRecords error:', err)
@@ -633,7 +638,7 @@ function renderHome() {
   }
 }
 
-function buildTrainingHistoryItem(t) {
+function buildTrainingHistoryItem(t, showDelete = false) {
   const tags = (t.items || []).slice(0,4).map(it => {
     const master = getAllMaster().find(m => m.id === it.id);
     const color = master ? CATEGORY_META[master.cat]?.color || '#6b7280' : '#6b7280';
@@ -642,8 +647,29 @@ function buildTrainingHistoryItem(t) {
   }).join('');
   const more = (t.items||[]).length > 4 ? `<span class="training-tag">+${(t.items.length-4)}件</span>` : '';
   const comment = t.comment ? `<div class="history-comment">💬 ${escHtml(t.comment)}</div>` : '';
-  return `<div class="history-item"><div class="history-date">${t.date}</div><div class="training-tags">${tags}${more}</div>${comment}</div>`;
+  const deleteBtn = showDelete
+    ? `<button class="btn btn-danger btn-sm" style="margin-top:8px" onclick="deleteTrainingRecord('${t.id}')">削除</button>`
+    : '';
+  return `<div class="history-item"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div class="history-date" style="margin-bottom:0">${t.date}</div>${showDelete ? `<button class="btn btn-danger btn-sm" onclick="deleteTrainingRecord('${t.id}')">削除</button>` : ''}</div><div class="training-tags">${tags}${more}</div>${comment}</div>`;
 }
+
+function renderTrainingHistory() {
+  const el = document.getElementById('trainingHistoryList');
+  if (!el) return;
+  if (!state.currentPlayerId || state.trainingRecords.length === 0) {
+    el.innerHTML = '<div class="empty-state">まだ記録がありません</div>';
+    return;
+  }
+  el.innerHTML = state.trainingRecords.map(t => buildTrainingHistoryItem(t, true)).join('');
+}
+
+window.deleteTrainingRecord = async function(id) {
+  if (!confirm('このトレーニング記録を削除しますか？')) return;
+  try {
+    await deleteDoc(doc(db,'trainingRecords',id));
+    showToast('削除しました');
+  } catch(e) { showToast('削除に失敗しました'); console.error(e); }
+};
 
 function calcAge(birthdate) {
   if (!birthdate) return '';
@@ -1075,20 +1101,22 @@ window.deleteMasterItem = async function(id) {
 
 // ===================== NAVIGATION =====================
 window.switchTab = function(tab) {
-  // タブ離脱時にトレーニング選択をリセット
+  // トレーニングタブ離脱時：選択・コメントを全リセット（Firestoreには無影響）
   const prevTab = document.querySelector('.tab-content.active')?.id?.replace('tab-','');
   if (prevTab === 'training' && tab !== 'training') {
-    if (Object.keys(state.selectedTrainings).length > 0) {
-      state.selectedTrainings = {};
-      renderTrainingGrid();
-      renderSelectedTrainings();
-    }
+    state.selectedTrainings = {};
+    renderTrainingGrid();
+    renderSelectedTrainings();
+    document.getElementById('tComment').value = '';
   }
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+  if (tab === 'training') {
+    renderTrainingHistory();
+  }
   if (tab === 'settings') {
     renderPlayerList();
     renderSettingsMaster();
