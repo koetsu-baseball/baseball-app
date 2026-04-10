@@ -360,28 +360,28 @@ const CATEGORY_META = {
 const DEFAULT_MASTER = [
   // 基礎・ヒンジ
   { id:'h1', cat:'hinge', name:'壁ヒンジ',       defCount:10, defSets:3, unit:'回',  note:'' },
-  { id:'h2', cat:'hinge', name:'片足ヒンジ',     defCount:5,  defSets:3, unit:'回',  note:'左右' },
-  { id:'h3', cat:'hinge', name:'壁押しドリル',   defCount:10, defSets:3, unit:'秒',  note:'左右' },
+  { id:'h2', cat:'hinge', name:'片足(かたあし)ヒンジ',   defCount:5,  defSets:3, unit:'回',  note:'左右' },
+  { id:'h3', cat:'hinge', name:'壁押(かべお)しドリル',  defCount:10, defSets:3, unit:'秒',  note:'左右' },
   // 可動域・柔軟
   { id:'m1', cat:'mobility', name:'ハムストリングスストレッチ',         defCount:30, defSets:2, unit:'秒', note:'左右' },
-  { id:'m2', cat:'mobility', name:'股関節ストレッチランジ',             defCount:30, defSets:2, unit:'秒', note:'左右' },
-  { id:'m3', cat:'mobility', name:'胸郭ストレッチ キャット&ドッグ',    defCount:20, defSets:2, unit:'回', note:'' },
-  { id:'m4', cat:'mobility', name:'捻転ストレッチ トランクローテーション', defCount:20, defSets:2, unit:'回', note:'' },
+  { id:'m2', cat:'mobility', name:'股関節(こかんせつ)ストレッチ・ランジ',               defCount:30, defSets:2, unit:'秒', note:'左右' },
+  { id:'m3', cat:'mobility', name:'胸郭(きょうかく)ストレッチ・キャット＆ドッグ',       defCount:20, defSets:2, unit:'回', note:'' },
+  { id:'m4', cat:'mobility', name:'捻転(ねんてん)ストレッチ・トランクローテーション',   defCount:20, defSets:2, unit:'回', note:'' },
   { id:'m5', cat:'mobility', name:'ブリッジ',                         defCount:20, defSets:2, unit:'秒', note:'' },
   // 体幹・腹圧
   { id:'c1', cat:'core', name:'プランク',                    defCount:30, defSets:3, unit:'秒', note:'' },
-  { id:'c2', cat:'core', name:'バランスディスク腿上げ',      defCount:30, defSets:2, unit:'秒', note:'左右' },
-  { id:'c3', cat:'core', name:'オーバーヘッド腿上げ',        defCount:10, defSets:2, unit:'秒', note:'左右' },
+  { id:'c2', cat:'core', name:'バランスディスク腿上(ももあ)げ', defCount:30, defSets:2, unit:'秒', note:'左右' },
+  { id:'c3', cat:'core', name:'オーバーヘッド腿上(ももあ)げ', defCount:10, defSets:2, unit:'秒', note:'左右' },
   // 出力・筋力
   { id:'p1', cat:'power', name:'ヒップリフト',             defCount:20, defSets:2, unit:'秒', note:'' },
-  { id:'p2', cat:'power', name:'片足ヒップリフト',         defCount:10, defSets:2, unit:'秒', note:'左右' },
+  { id:'p2', cat:'power', name:'片足(かたあし)ヒップリフト', defCount:10, defSets:2, unit:'秒', note:'左右' },
   { id:'p3', cat:'power', name:'バランスボールハムカール', defCount:10, defSets:2, unit:'回', note:'' },
   // 瞬発力
   { id:'e1', cat:'explosive', name:'ジャンプボックス50cm ヒンジジャンプ', defCount:10, defSets:3, unit:'回', note:'' },
-  { id:'e2', cat:'explosive', name:'ジャンプボックス40cm 左右ジャンプ',  defCount:10, defSets:2, unit:'往復', note:'' },
-  { id:'e3', cat:'explosive', name:'ジャンプボックス30cm 連続ジャンプ',  defCount:10, defSets:2, unit:'回', note:'' },
-  { id:'e4', cat:'explosive', name:'縄跳び 一重跳び',                    defCount:100,defSets:1, unit:'回', note:'' },
-  { id:'e5', cat:'explosive', name:'縄跳び 二重跳び',                    defCount:10, defSets:3, unit:'回', note:'' },
+  { id:'e2', cat:'explosive', name:'ジャンプボックス40cm・左右ジャンプ', defCount:10, defSets:2, unit:'往復', note:'' },
+  { id:'e3', cat:'explosive', name:'ジャンプボックス30cm・連続ジャンプ', defCount:10, defSets:2, unit:'回', note:'' },
+  { id:'e4', cat:'explosive', name:'縄跳び・一重跳び',                   defCount:100,defSets:1, unit:'回', note:'' },
+  { id:'e5', cat:'explosive', name:'縄跳び・二重跳び',                   defCount:10, defSets:3, unit:'回', note:'' },
   // 実戦練習 (freeInput)
   { id:'pr1', cat:'practice', name:'キャッチボール',        defCount:0, defSets:1, unit:'球', note:'', freeInput:true },
   { id:'pr2', cat:'practice', name:'ピッチング練習',        defCount:0, defSets:1, unit:'球', note:'', freeInput:true },
@@ -400,7 +400,7 @@ let state = {
   trainingRecords: [],
   customMaster: [],
   selectedTrainings: {},   // id -> { name, count, sets, unit, color }
-  currentCat: 'all',
+  currentCat: 'practice',
   growthChart: null,
   editingPlayerId: null,
   unsubGrowth: null,
@@ -782,7 +782,6 @@ window.deleteGrowthRecord = async function(id) {
 function buildCatTabs() {
   const tabs = document.getElementById('catTabs');
   const cats = [
-    { id:'all',       name:'すべて' },
     { id:'practice',  name: CATEGORY_META.practice.name },
     { id:'hinge',     name: CATEGORY_META.hinge.name },
     { id:'mobility',  name: CATEGORY_META.mobility.name },
@@ -790,16 +789,20 @@ function buildCatTabs() {
     { id:'power',     name: CATEGORY_META.power.name },
     { id:'explosive', name: CATEGORY_META.explosive.name },
   ];
-  tabs.innerHTML = cats.map(c => `
-    <button class="cat-tab${c.id==='all'?' active':''}" data-cat="${c.id}"
-      style="${c.id!=='all'?`background:${CATEGORY_META[c.id]?.color||''}22;color:${CATEGORY_META[c.id]?.color||''};border-color:${CATEGORY_META[c.id]?.color||''}44`:''}"
-      onclick="setCat('${c.id}')">
-      ${escHtml(c.name)}
-    </button>
-  `).join('');
-  // mark first active
-  const first = tabs.querySelector('.cat-tab');
-  if(first) first.style.background='var(--accent)';
+  tabs.innerHTML = cats.map(c => {
+    const color = CATEGORY_META[c.id]?.color || '#6b7280';
+    const isActive = c.id === state.currentCat;
+    const bg = isActive ? color : color + '22';
+    const col = isActive ? '#fff' : color;
+    const border = isActive ? 'transparent' : color + '44';
+    return `
+      <button class="cat-tab${isActive?' active':''}" data-cat="${c.id}"
+        style="background:${bg};color:${col};border-color:${border}"
+        onclick="setCat('${c.id}')">
+        ${escHtml(c.name)}
+      </button>
+    `;
+  }).join('');
 }
 
 window.setCat = function(cat) {
@@ -809,27 +812,15 @@ window.setCat = function(cat) {
     t.classList.remove('active');
     if (tc === cat) {
       t.classList.add('active');
-      if (cat === 'all') {
-        t.style.background = 'var(--accent)';
-        t.style.color = '#fff';
-        t.style.borderColor = 'transparent';
-      } else {
-        const color = CATEGORY_META[cat]?.color || '#6b7280';
-        t.style.background = color;
-        t.style.color = '#fff';
-        t.style.borderColor = 'transparent';
-      }
+      const color = CATEGORY_META[cat]?.color || '#6b7280';
+      t.style.background = color;
+      t.style.color = '#fff';
+      t.style.borderColor = 'transparent';
     } else {
-      if (tc === 'all') {
-        t.style.background = 'var(--bg3)';
-        t.style.color = 'var(--text2)';
-        t.style.borderColor = 'var(--border)';
-      } else {
-        const color = CATEGORY_META[tc]?.color || '#6b7280';
-        t.style.background = color + '22';
-        t.style.color = color;
-        t.style.borderColor = color + '44';
-      }
+      const color = CATEGORY_META[tc]?.color || '#6b7280';
+      t.style.background = color + '22';
+      t.style.color = color;
+      t.style.borderColor = color + '44';
     }
   });
   renderTrainingGrid();
@@ -1084,6 +1075,15 @@ window.deleteMasterItem = async function(id) {
 
 // ===================== NAVIGATION =====================
 window.switchTab = function(tab) {
+  // タブ離脱時にトレーニング選択をリセット
+  const prevTab = document.querySelector('.tab-content.active')?.id?.replace('tab-','');
+  if (prevTab === 'training' && tab !== 'training') {
+    if (Object.keys(state.selectedTrainings).length > 0) {
+      state.selectedTrainings = {};
+      renderTrainingGrid();
+      renderSelectedTrainings();
+    }
+  }
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(btn => {
